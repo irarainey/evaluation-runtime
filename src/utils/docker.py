@@ -9,7 +9,11 @@ class DockerWrapper:
 
     def login(self, registry: str):
         access_token = authenticate_acr(registry)
-        self.client.login(username="00000000-0000-0000-0000-000000000000", password=access_token, registry=registry)
+        self.client.login(
+            username="00000000-0000-0000-0000-000000000000",
+            password=access_token,
+            registry=registry,
+        )
 
     def build(self, path: str, tag: str):
         self.client.images.build(path=path, tag=tag)

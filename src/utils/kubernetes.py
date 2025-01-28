@@ -8,11 +8,11 @@ class KubernetesWrapper:
         self.resource_group_name = resource_group_name
         self.aks_cluster_name = aks_cluster_name
         self.namespace = namespace
-        self.get_credentials(resource_group_name, aks_cluster_name)
+        self.authenticate(resource_group_name, aks_cluster_name)
         self.apps = client.AppsV1Api()
         self.core = client.CoreV1Api()
 
-    def get_credentials(self, resource_group_name, aks_cluster_name):
+    def authenticate(self, resource_group_name, aks_cluster_name):
         subprocess.run(
             [
                 "az",

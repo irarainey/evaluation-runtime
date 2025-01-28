@@ -63,9 +63,7 @@ async def execute(file: UploadFile = File(...)) -> Response:
 
     if existing_deployment is not None:
         # Update the existing deployment with the new image
-        aks.update_deployment(
-            existing_deployment, deployment_name, container_image
-        )
+        aks.update_deployment(existing_deployment, deployment_name, container_image)
     else:
         # Create a new deployment if it doesn't exist
         aks.create_deployment(deployment_name, container_image, app_name)
