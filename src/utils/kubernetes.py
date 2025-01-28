@@ -58,7 +58,7 @@ class KubernetesWrapper:
         batch_api = client.BatchV1Api()
         batch_api.create_namespaced_job(self.namespace, job)
 
-    def wait_for_pod_ready(self, job_name):
+    def wait_for_pod_completion(self, job_name):
         print("Waiting for job to complete...")
         pod_ready = False
         for _ in range(30):  # Try for 30 iterations (30 x 2 = 60 seconds)

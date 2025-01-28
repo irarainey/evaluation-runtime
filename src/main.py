@@ -61,7 +61,7 @@ async def execute(file: UploadFile = File(...)) -> Response:
     aks.execute_job(job)
 
     # Poll the pod status until it is running
-    if aks.wait_for_pod_ready(job_name) is False:
+    if aks.wait_for_pod_completion(job_name) is False:
         raise RuntimeError("Job did not start within the expected time")
 
     # Capture the logs from the pod
