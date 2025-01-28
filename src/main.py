@@ -1,4 +1,5 @@
 import os
+import uuid
 import uvicorn
 from dotenv import load_dotenv
 from utils.azure import azure_login
@@ -21,9 +22,6 @@ async def execute(file: UploadFile = File(...)) -> Response:
     aks_cluster_name = os.getenv("AKS_NAME")
     fqdn_registry = f"{registry_name}.azurecr.io"
     container_image = f"{fqdn_registry}/{image_name}:{image_tag}"
-    app_name = "my-app"
-    service_name = "execution-service"
-    deployment_name = "execution-deployment"
 
     # Perform Azure login
     azure_login()
@@ -52,32 +50,22 @@ async def execute(file: UploadFile = File(...)) -> Response:
     # Create a Kubernetes client
     aks = KubernetesWrapper(resource_group_name, aks_cluster_name)
 
-    print("Setting up deployment and service...")
+    job_id = uuid.uuid4()
+    pod_id = job_id
+    pod_name = f"my-job-pod-{pod_id}"
+    job_name = f"my-job-{job_id}"
 
-    # Check if the service exists
-    if aks.check_service_exists(service_name) is False:
-        aks.create_service(service_name, app_name)
-
-    # Check if the deployment exists
-    existing_deployment = aks.get_existing_deployment(deployment_name)
-
-    if existing_deployment is not None:
-        # Update the existing deployment with the new image
-        aks.update_deployment(existing_deployment, deployment_name, container_image)
-    else:
-        # Create a new deployment if it doesn't exist
-        aks.create_deployment(deployment_name, container_image, app_name)
-
-    print("Deployment and service are set up. Waiting for pod to start...")
+    container = aks.create_container(container_image, "execution", "Always")
+    pod_spec = aks.create_pod_template(pod_name, container)
+    job = aks.create_job(job_name, pod_spec)
+    aks.execute_job(job)
 
     # Poll the pod status until it is running
-    if aks.wait_for_pod_ready(app_name) is False:
-        raise RuntimeError("Pod did not start within the expected time")
-
-    print("Pod is running. Fetching logs...")
+    if aks.wait_for_pod_ready(job_name) is False:
+        raise RuntimeError("Job did not start within the expected time")
 
     # Capture the logs from the pod
-    logs = aks.get_logs(app_name)
+    logs = aks.get_logs(job_name)
 
     # Return the response
     return Response(
