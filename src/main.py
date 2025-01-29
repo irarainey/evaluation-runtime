@@ -1,84 +1,148 @@
+import logging
 import os
 import uuid
 import uvicorn
 from dotenv import load_dotenv
+from constants import EXECUTION_SCRIPT, IMAGE_NAME, IMAGE_TAG, MEDIA_TYPE, SAVE_PATH
 from utils.azure import azure_login
 from utils.docker import DockerWrapper
+from utils.file import copy_file, delete_all_files_in_path, write_file
 from utils.kubernetes import KubernetesWrapper
 from fastapi import FastAPI, Response, File, UploadFile
+from utils.notebook import convert_notebook_to_script
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
+# Load environment variables
+load_dotenv()
+
+# Get environment variables
+registry_name = os.getenv("ACR_NAME")
+resource_group = os.getenv("RESOURCE_GROUP_NAME")
+aks_cluster = os.getenv("AKS_NAME")
+
+# Create the FastAPI app
 app = FastAPI()
 
 
+# Define the endpoint to execute the code
 @app.post("/execute")
 async def execute(file: UploadFile = File(...)) -> Response:
 
-    # Get environment variables
-    registry_name = os.getenv("ACR_NAME")
-    image_name = os.getenv("IMAGE_NAME")
-    image_tag = os.getenv("IMAGE_TAG")
-    resource_group_name = os.getenv("RESOURCE_GROUP_NAME")
-    aks_cluster_name = os.getenv("AKS_NAME")
+    logging.info("Received a request to execute code")
+
+    # Create the full registry and container image names
     fqdn_registry = f"{registry_name}.azurecr.io"
-    container_image = f"{fqdn_registry}/{image_name}:{image_tag}"
+    container_image = f"{fqdn_registry}/{IMAGE_NAME}:{IMAGE_TAG}"
 
     # Perform Azure login
-    azure_login()
+    try:
+        azure_login()
+    except Exception as e:
+        logging.error(f"Error logging in to Azure: {e}")
+        return Response(
+            content={"error": str(e)},
+            media_type=MEDIA_TYPE,
+            status_code=500,
+        )
 
-    # Check if the code directory exists
-    save_path = "src/boilerplate/code/"
-    os.makedirs(save_path, exist_ok=True)
+    # Handle the uploaded file for execution
+    try:
+        # Check if the code directory exists
+        os.makedirs(SAVE_PATH, exist_ok=True)
 
-    # Read and save the uploaded file
-    file_location = os.path.join(save_path, "main.py")
-    with open(file_location, "wb") as f:
-        f.write(await file.read())
+        # Empty out the code directory
+        delete_all_files_in_path(SAVE_PATH)
 
-    # Create a Docker client authenticated with the ACR
-    docker = DockerWrapper(fqdn_registry)
+        # Save the uploaded file
+        if file.filename.endswith(".ipynb"):
+            file_location = os.path.join(SAVE_PATH, file.filename)
+            await write_file(file, file_location)
+            # Convert the Jupyter Notebook to a Python script
+            await convert_notebook_to_script(
+                file_location, f"{SAVE_PATH}/{EXECUTION_SCRIPT}"
+            )
+        else:
+            file_location = os.path.join(SAVE_PATH, EXECUTION_SCRIPT)
+            await write_file(file, file_location)
 
-    # Build the Docker image
-    docker.build(
-        path="./src/boilerplate",
-        tag=container_image,
-    )
+        # Copy the Dockerfile from the boilerplate folder to the execution directory
+        copy_file("src/boilerplate/Dockerfile", SAVE_PATH)
+    except Exception as e:
+        logging.error(f"Error handling the uploaded file: {e}")
+        return Response(
+            content={"error": str(e)},
+            media_type=MEDIA_TYPE,
+            status_code=500,
+        )
 
-    # Push the Docker image to the Azure Container Registry
-    docker.push(repository=f"{fqdn_registry}/{image_name}", tag=image_tag)
+    # Attempt to build and push the Docker image
+    try:
+        # Create a Docker client authenticated with the ACR
+        docker = DockerWrapper(fqdn_registry)
 
-    # Create a Kubernetes client
-    aks = KubernetesWrapper(resource_group_name, aks_cluster_name)
+        # Build the Docker image
+        docker.build(
+            path=f"./{SAVE_PATH}",
+            tag=container_image,
+        )
 
-    job_id = uuid.uuid4()
-    pod_id = job_id
-    pod_name = f"my-job-pod-{pod_id}"
-    job_name = f"my-job-{job_id}"
+        # Push the Docker image to the Azure Container Registry
+        docker.push(repository=f"{fqdn_registry}/{IMAGE_NAME}", tag=IMAGE_TAG)
+    except Exception as e:
+        logging.error(f"Error building or pushing Docker image: {e}")
+        return Response(
+            content={"error": str(e)},
+            media_type=MEDIA_TYPE,
+            status_code=500,
+        )
 
-    container = aks.create_container(container_image, "execution", "Always")
-    pod_spec = aks.create_pod_template(pod_name, container)
-    job = aks.create_job(job_name, pod_spec)
-    aks.execute_job(job)
+    # Attempt to execute the job on the Azure Kubernetes Service
+    try:
+        # Create a Kubernetes client
+        aks = KubernetesWrapper(resource_group, aks_cluster)
 
-    # Poll the pod status until it is running
-    if aks.wait_for_pod_completion(job_name) is False:
-        raise RuntimeError("Job did not start within the expected time")
+        # Create job and pod names
+        job_id = uuid.uuid4()
+        pod_name = f"execution-pod-{job_id}"
+        job_name = f"execution-job-{job_id}"
 
-    # Capture the logs from the pod
-    logs = aks.get_logs(job_name)
+        # Create the container, pod, and job
+        container = aks.create_container(container_image, job_name)
+        pod_spec = aks.create_pod_template(pod_name, container)
+        job = aks.create_job(job_name, pod_spec)
+
+        # Execute the job
+        aks.execute_job(job)
+
+        # Poll the pod status until it is completed
+        if aks.wait_for_pod_completion(job_name) is False:
+            raise RuntimeError("Pod did not start within the expected time")
+
+        # Capture the logs from the pod for the job
+        logs = aks.get_logs(job_name)
+    except Exception as e:
+        logging.error(f"Error executing job: {e}")
+        return Response(
+            content={"error": str(e)},
+            media_type=MEDIA_TYPE,
+            status_code=500,
+        )
+
+    logging.info("Job execution completed successfully")
 
     # Return the response
     return Response(
         content=logs,
-        media_type="application/json",
+        media_type=MEDIA_TYPE,
         status_code=200,
     )
 
 
 # Entry point of the script
 if __name__ == "__main__":
-    # Load environment variables
-    load_dotenv()
-
     # Create the Uvicorn server
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

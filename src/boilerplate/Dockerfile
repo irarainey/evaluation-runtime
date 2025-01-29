@@ -5,7 +5,7 @@ FROM python:3.11-slim
 WORKDIR /usr/src/app
 
 # Copy the local file with the Python script to the container
-COPY code/main.py .
+COPY main.py .
 
 # Run the Python script when the container launches
 CMD ["python", "main.py"]

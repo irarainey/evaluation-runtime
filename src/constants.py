@@ -1,0 +1,5 @@
+SAVE_PATH = "execution"
+EXECUTION_SCRIPT = "main.py"
+MEDIA_TYPE = "application/json"
+IMAGE_NAME = "execution-sandbox"
+IMAGE_TAG = "latest"
