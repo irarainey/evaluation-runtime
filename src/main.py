@@ -23,6 +23,8 @@ load_dotenv()
 registry_name = os.getenv("ACR_NAME")
 resource_group = os.getenv("RESOURCE_GROUP_NAME")
 aks_cluster = os.getenv("AKS_NAME")
+openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
 
 # Create the FastAPI app
 app = FastAPI()
@@ -111,7 +113,7 @@ async def execute(file: UploadFile = File(...)) -> Response:
         job_name = f"execution-job-{job_id}"
 
         # Create the container, pod, and job
-        container = aks.create_container(container_image, job_name)
+        container = aks.create_container(container_image, job_name, openai_endpoint, openai_api_key)
         pod_spec = aks.create_pod_template(pod_name, container)
         job = aks.create_job(job_name, pod_spec)
 
@@ -120,7 +122,7 @@ async def execute(file: UploadFile = File(...)) -> Response:
 
         # Poll the pod status until it is completed
         if aks.wait_for_pod_completion(job_name) is False:
-            raise RuntimeError("Pod did not start within the expected time")
+            raise RuntimeError("Job did not complete successfully")
 
         # Capture the logs from the pod for the job
         logs = aks.get_logs(job_name)

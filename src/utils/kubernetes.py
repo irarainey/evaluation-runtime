@@ -44,18 +44,28 @@ class KubernetesWrapper:
 
         config.load_kube_config()
 
-    def create_container(self, image, name, pull_policy="Always"):
+    def create_container(
+        self, image, name, gpt_endpoint="", gpt_api_key="", pull_policy="Always"
+    ):
         """
         Create a container definition for a Kubernetes pod.
 
         Parameters:
         - image (str): The name of the Docker image to use.
         - name (str): The name to assign to the container.
+        - gpt_endpoint (str): The Azure OpenAI endpoint to use (default is '').
+        - gpt_api_key (str): The Azure OpenAI API key to use (default is '').
         - pull_policy (str): The image pull policy to use (default is 'Always').
         """
         logging.info(f"Creating container with image: {image}")
         container = client.V1Container(
-            image=image, name=name, image_pull_policy=pull_policy
+            image=image,
+            name=name,
+            image_pull_policy=pull_policy,
+            env=[
+                client.V1EnvVar(name="AZURE_OPENAI_ENDPOINT", value=gpt_endpoint),
+                client.V1EnvVar(name="AZURE_OPENAI_API_KEY", value=gpt_api_key),
+            ],
         )
         return container
 
@@ -122,6 +132,8 @@ class KubernetesWrapper:
                 if pod_status == "Succeeded":
                     pod_ready = True
                     break
+                elif pod_status == "Failed":
+                    raise RuntimeError("Job failed to complete")
             time.sleep(2)
         return pod_ready
 

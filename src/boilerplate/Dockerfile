@@ -7,5 +7,11 @@ WORKDIR /usr/src/app
 # Copy the local file with the Python script to the container
 COPY main.py .
 
+# Set environment variables
+ENV AZURE_OPENAI_ENDPOINT=""
+ENV AZURE_OPENAI_API_KEY=""
+
+RUN pip install openai
+
 # Run the Python script when the container launches
 CMD ["python", "main.py"]
