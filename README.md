@@ -2,11 +2,29 @@
 
 This repository contains a simple Python execution and evaluation engine that can run Python scripts or Jupyter notebooks which make calls to Azure OpenAI and perform evaluation of the output. It does this by dynamically building a Docker image with the necessary dependencies and running the container on an Azure Kubernetes Service instance.
 
-The project uses FastAPI and takes in a single POST request with a file containing the file to be executed. The engine will then execute the file and return the output. A sample notebook is included in the `samples` directory and can be run using the following commands:
+The project uses FastAPI and takes in a single POST request with a file containing the file to be executed. The engine will then execute the file, return the output, and perform the evaluation. A sample notebook and extraction file are included in the `resources/samples` directory.
+
+The inputs for each request are as follows:
+
+- `script`: The file to be executed (either a Python script or Jupyter notebook) that contains the prompt and the code to be executed.
+- `extraction`: The JSON file containing the extracted content to be used as context for the inference.
+- `ground_truth`: The ground truth value to be used for evaluation.
+- `evaluators`: The list of evaluators to be used for evaluation. The available evaluators are `f1`, `bleu`, `gleu`, `meteor`, and `rouge`.
+
+You can run the API by using the following `curl` command:
 
 ```bash
-curl -X POST "http://127.0.0.1:8000/" -F "file=@samples/prompt.ipynb"
+curl --request POST \
+  --url http://localhost:8000/ \
+  --header 'content-type: multipart/form-data' \
+  --form 'script=@resources/samples/prompt.ipynb' \
+  --form 'extraction=@resources/samples/extraction.json' \
+  --form 'ground_truth=£82m' \
+  --form 'evaluators=f1,bleu,gleu,meteor,rouge'
 ```
+Or you could run the request using a tool such as Bruno or Postman:
+
+![Example](./resources/images/example.png)
 
 ## Prerequisites
 
