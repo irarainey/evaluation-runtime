@@ -3,6 +3,8 @@ import subprocess
 import time
 from kubernetes import config, client
 
+from constants import AKS_SECRET_NAME
+
 
 class KubernetesWrapper:
     """
@@ -108,7 +110,7 @@ class KubernetesWrapper:
                     name="AZURE_OPENAI_ENDPOINT",
                     value_from=client.V1EnvVarSource(
                         secret_key_ref=client.V1SecretKeySelector(
-                            name="azure-openai-secrets",
+                            name=AKS_SECRET_NAME,
                             key="AZURE_OPENAI_ENDPOINT",
                         )
                     ),
@@ -117,7 +119,7 @@ class KubernetesWrapper:
                     name="AZURE_OPENAI_API_KEY",
                     value_from=client.V1EnvVarSource(
                         secret_key_ref=client.V1SecretKeySelector(
-                            name="azure-openai-secrets",
+                            name=AKS_SECRET_NAME,
                             key="AZURE_OPENAI_API_KEY",
                         )
                     ),

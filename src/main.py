@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import uuid
@@ -6,6 +7,7 @@ from dotenv import load_dotenv
 from constants import (
     AKS_SECRET_NAME,
     EXECUTION_SCRIPT,
+    EXTRACTION_FILE,
     IMAGE_NAME,
     IMAGE_TAG,
     MEDIA_TYPE,
@@ -13,9 +15,10 @@ from constants import (
 )
 from utils.azure import azure_login
 from utils.docker import DockerWrapper
+from utils.evaluation import evaluate
 from utils.file import copy_file, delete_all_files_in_path, write_file
 from utils.kubernetes import KubernetesWrapper
-from fastapi import FastAPI, Response, File, UploadFile
+from fastapi import FastAPI, Form, Response, File, UploadFile
 from utils.notebook import convert_notebook_to_script
 
 # Configure logging
@@ -37,9 +40,14 @@ openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
 app = FastAPI()
 
 
-# Define the endpoint to execute the code
+# Define the endpoint to evaluate the code
 @app.post("/")
-async def execute(file: UploadFile = File(...)) -> Response:
+async def evaluation(
+    ground_truth: str = Form(...),
+    evaluators: str = Form(...),
+    extraction: UploadFile = File(...),
+    script: UploadFile = File(...),
+) -> Response:
 
     logging.info("Received a request to execute code")
 
@@ -58,7 +66,7 @@ async def execute(file: UploadFile = File(...)) -> Response:
             status_code=500,
         )
 
-    # Handle the uploaded file for execution
+    # Handle the uploaded files for execution
     try:
         # Check if the code directory exists
         os.makedirs(SAVE_PATH, exist_ok=True)
@@ -67,16 +75,23 @@ async def execute(file: UploadFile = File(...)) -> Response:
         delete_all_files_in_path(SAVE_PATH)
 
         # Save the uploaded file
-        if file.filename.endswith(".ipynb"):
-            file_location = os.path.join(SAVE_PATH, file.filename)
-            await write_file(file, file_location)
+        if script.filename.endswith(".ipynb"):
+            file_location = os.path.join(SAVE_PATH, script.filename)
+            await write_file(script, file_location)
             # Convert the Jupyter Notebook to a Python script
             await convert_notebook_to_script(
                 file_location, f"{SAVE_PATH}/{EXECUTION_SCRIPT}"
             )
         else:
             file_location = os.path.join(SAVE_PATH, EXECUTION_SCRIPT)
-            await write_file(file, file_location)
+            await write_file(script, file_location)
+
+        # Save the extraction file contents
+        file_location = os.path.join(SAVE_PATH, EXTRACTION_FILE)
+        extraction_file = await extraction.read()
+        extraction_json = extraction_file.decode('utf-8')
+        extraction_content = json.loads(extraction_json)
+        await write_file(extraction_content.get("content"), file_location, "w")
 
         # Copy the Dockerfile from the boilerplate folder to the execution directory
         copy_file("src/boilerplate/Dockerfile", SAVE_PATH)
@@ -135,10 +150,21 @@ async def execute(file: UploadFile = File(...)) -> Response:
 
         # Poll the pod status until it is completed
         if aks.wait_for_pod_completion(job_name) is False:
-            raise RuntimeError("Job did not complete successfully")
+            raise Exception("Job did not complete successfully")
 
         # Capture the logs from the pod for the job
         logs = aks.get_logs(job_name)
+
+        # Create the data for evaluation
+        data = dict(
+            response=logs,
+            ground_truth=ground_truth,
+        )
+
+        # Perform the evaluation
+        evaluator_list = evaluators.split(",")
+        eval_results = evaluate(evaluator_list, data)
+
     except Exception as e:
         logging.error(f"Error executing job: {e}")
         return Response(
@@ -149,9 +175,15 @@ async def execute(file: UploadFile = File(...)) -> Response:
 
     logging.info("Job execution completed successfully")
 
+    response_content = {
+        "response": logs,
+        "ground_truth": ground_truth,
+        "evaluation": eval_results,
+    }
+
     # Return the response
     return Response(
-        content=logs,
+        content=json.dumps(response_content),
         media_type=MEDIA_TYPE,
         status_code=200,
     )

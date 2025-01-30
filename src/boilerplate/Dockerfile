@@ -6,6 +6,7 @@ WORKDIR /usr/src/app
 
 # Copy the local file with the Python script to the container
 COPY main.py .
+COPY extraction.txt .
 
 # Set environment variables
 ENV AZURE_OPENAI_ENDPOINT=""
