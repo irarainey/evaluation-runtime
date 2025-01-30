@@ -5,8 +5,6 @@ FROM python:3.11-slim
 
 # Install Docker
 
-# Install kubectl
-
 # Set the working directory inside the container
 WORKDIR /app
 

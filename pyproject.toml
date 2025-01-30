@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "Execution Engine Test"
-version = "0.0.1"
-description = ""
+name = "Evaluation Runtime"
+version = "0.1.0"
+description = "An API that provides a runtime to run Python scripts and Jupyter notebooks making calls to Azure OpenAI endpoints and perform evaluation of the output."
 authors = ["Ira Rainey"]
 readme = "README.md"
 package-mode = false

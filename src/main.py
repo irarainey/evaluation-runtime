@@ -3,7 +3,14 @@ import os
 import uuid
 import uvicorn
 from dotenv import load_dotenv
-from constants import EXECUTION_SCRIPT, IMAGE_NAME, IMAGE_TAG, MEDIA_TYPE, SAVE_PATH
+from constants import (
+    AKS_SECRET_NAME,
+    EXECUTION_SCRIPT,
+    IMAGE_NAME,
+    IMAGE_TAG,
+    MEDIA_TYPE,
+    SAVE_PATH,
+)
 from utils.azure import azure_login
 from utils.docker import DockerWrapper
 from utils.file import copy_file, delete_all_files_in_path, write_file
@@ -31,7 +38,7 @@ app = FastAPI()
 
 
 # Define the endpoint to execute the code
-@app.post("/execute")
+@app.post("/")
 async def execute(file: UploadFile = File(...)) -> Response:
 
     logging.info("Received a request to execute code")
@@ -112,8 +119,14 @@ async def execute(file: UploadFile = File(...)) -> Response:
         pod_name = f"execution-pod-{job_id}"
         job_name = f"execution-job-{job_id}"
 
-        # Create the container, pod, and job
-        container = aks.create_container(container_image, job_name, openai_endpoint, openai_api_key)
+        # Create the secrets, container, pod, and job
+        secret_data = {
+            "AZURE_OPENAI_ENDPOINT": openai_endpoint,
+            "AZURE_OPENAI_API_KEY": openai_api_key,
+        }
+
+        aks.create_secrets(AKS_SECRET_NAME, secret_data)
+        container = aks.create_container(container_image, job_name)
         pod_spec = aks.create_pod_template(pod_name, container)
         job = aks.create_job(job_name, pod_spec)
 

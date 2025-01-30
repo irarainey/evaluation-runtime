@@ -44,27 +44,84 @@ class KubernetesWrapper:
 
         config.load_kube_config()
 
-    def create_container(
-        self, image, name, gpt_endpoint="", gpt_api_key="", pull_policy="Always"
-    ):
+    def create_secrets(self, secret_name, secret_data):
+        """
+        Create a Kubernetes secret.
+
+        Parameters:
+        - secret_name (str): The name to assign to the secret.
+        - data (dict): The data to store in the secret.
+        """
+        logging.info(f"Creating secret with name: {secret_name}")
+
+        # Create the Secret object
+        secret = client.V1Secret(
+            api_version="v1",
+            kind="Secret",
+            metadata=client.V1ObjectMeta(name=secret_name),
+            type="Opaque",
+            string_data=secret_data,
+        )
+
+        # Create the Secret in Kubernetes
+        core_v1_api = client.CoreV1Api()
+
+        # Check to see if the secret already exists and if so just update it
+        try:
+            # Attempt to read the existing Secret
+            core_v1_api.read_namespaced_secret(
+                name=secret_name, namespace=self.namespace
+            )
+            print(f"Secret '{secret_name}' exists. Updating it.")
+
+            # Update the existing Secret
+            core_v1_api.replace_namespaced_secret(
+                name=secret_name, namespace=self.namespace, body=secret
+            )
+        except Exception as e:
+            if e.status == 404:
+                # Secret does not exist; create it
+                print(f"Secret '{secret_name}' does not exist. Creating it.")
+                core_v1_api.create_namespaced_secret(
+                    namespace=self.namespace, body=secret
+                )
+            else:
+                raise e
+
+    def create_container(self, image, name, pull_policy="Always"):
         """
         Create a container definition for a Kubernetes pod.
 
         Parameters:
         - image (str): The name of the Docker image to use.
         - name (str): The name to assign to the container.
-        - gpt_endpoint (str): The Azure OpenAI endpoint to use (default is '').
-        - gpt_api_key (str): The Azure OpenAI API key to use (default is '').
         - pull_policy (str): The image pull policy to use (default is 'Always').
         """
         logging.info(f"Creating container with image: {image}")
+
         container = client.V1Container(
             image=image,
             name=name,
             image_pull_policy=pull_policy,
             env=[
-                client.V1EnvVar(name="AZURE_OPENAI_ENDPOINT", value=gpt_endpoint),
-                client.V1EnvVar(name="AZURE_OPENAI_API_KEY", value=gpt_api_key),
+                client.V1EnvVar(
+                    name="AZURE_OPENAI_ENDPOINT",
+                    value_from=client.V1EnvVarSource(
+                        secret_key_ref=client.V1SecretKeySelector(
+                            name="azure-openai-secrets",
+                            key="AZURE_OPENAI_ENDPOINT",
+                        )
+                    ),
+                ),
+                client.V1EnvVar(
+                    name="AZURE_OPENAI_API_KEY",
+                    value_from=client.V1EnvVarSource(
+                        secret_key_ref=client.V1SecretKeySelector(
+                            name="azure-openai-secrets",
+                            key="AZURE_OPENAI_API_KEY",
+                        )
+                    ),
+                ),
             ],
         )
         return container
