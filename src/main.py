@@ -61,7 +61,7 @@ async def evaluation(
     except Exception as e:
         logging.error(f"Error logging in to Azure: {e}")
         return Response(
-            content={"error": str(e)},
+            content=json.dumps({"error": str(e)}),
             media_type=MEDIA_TYPE,
             status_code=500,
         )
@@ -98,7 +98,7 @@ async def evaluation(
     except Exception as e:
         logging.error(f"Error handling the uploaded file: {e}")
         return Response(
-            content={"error": str(e)},
+            content=json.dumps({"error": str(e)}),
             media_type=MEDIA_TYPE,
             status_code=500,
         )
@@ -119,7 +119,7 @@ async def evaluation(
     except Exception as e:
         logging.error(f"Error building or pushing Docker image: {e}")
         return Response(
-            content={"error": str(e)},
+            content=json.dumps({"error": str(e)}),
             media_type=MEDIA_TYPE,
             status_code=500,
         )
@@ -168,7 +168,7 @@ async def evaluation(
     except Exception as e:
         logging.error(f"Error executing job: {e}")
         return Response(
-            content={"error": str(e)},
+            content=json.dumps({"error": str(e)}),
             media_type=MEDIA_TYPE,
             status_code=500,
         )
