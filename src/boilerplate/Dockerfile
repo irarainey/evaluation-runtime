@@ -8,10 +8,6 @@ WORKDIR /usr/src/app
 COPY main.py .
 COPY extraction.txt .
 
-# Set environment variables
-ENV AZURE_OPENAI_ENDPOINT=""
-ENV AZURE_OPENAI_API_KEY=""
-
 RUN pip install openai
 
 # Run the Python script when the container launches
