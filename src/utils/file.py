@@ -5,7 +5,7 @@ import shutil
 from fastapi import UploadFile
 
 
-def delete_all_files_in_path(path: str) -> None:
+def delete_all_files_in_path(path) -> None:
     """
     Delete all files in the specified path.
 
@@ -21,7 +21,7 @@ def delete_all_files_in_path(path: str) -> None:
             logging.error(f"Error deleting {file}: {e}")
 
 
-def copy_file(source_path: str, destination_path: str) -> None:
+def copy_file(source_path, destination_path) -> None:
     """
     Copy a file from the source path to the destination path.
 
@@ -36,9 +36,7 @@ def copy_file(source_path: str, destination_path: str) -> None:
         logging.error(f"Error copying file: {e}")
 
 
-async def write_file(
-    file: UploadFile | str, file_location: str, mode: str = "wb"
-) -> None:
+async def write_file(file: UploadFile | str, file_location, mode="wb") -> None:
     """
     Write the contents of an uploaded file to a specified location.
 

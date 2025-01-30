@@ -11,7 +11,7 @@ class DockerWrapper:
     - registry (str): The fully qualified domain name (FQDN) of the Azure Container Registry (ACR).
     """
 
-    def __init__(self, registry: str):
+    def __init__(self, registry):
         self.client = docker.from_env()
         self.login(registry)
 
@@ -30,7 +30,7 @@ class DockerWrapper:
             registry=registry,
         )
 
-    def build(self, path: str, tag: str):
+    def build(self, path, tag):
         """
         Build a Docker image.
 
@@ -41,7 +41,7 @@ class DockerWrapper:
         logging.info(f"Building Dockerfile at {path} with tag {tag}")
         self.client.images.build(path=path, tag=tag)
 
-    def push(self, repository: str, tag: str):
+    def push(self, repository, tag):
         """
         Push a Docker image to a container registry.
 

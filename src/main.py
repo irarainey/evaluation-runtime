@@ -89,7 +89,7 @@ async def evaluation(
         # Save the extraction file contents
         file_location = os.path.join(SAVE_PATH, EXTRACTION_FILE)
         extraction_file = await extraction.read()
-        extraction_json = extraction_file.decode('utf-8')
+        extraction_json = extraction_file.decode("utf-8")
         extraction_content = json.loads(extraction_json)
         await write_file(extraction_content.get("content"), file_location, "w")
 
