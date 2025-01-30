@@ -196,7 +196,7 @@ class KubernetesWrapper:
             time.sleep(2)
         return pod_ready
 
-    def get_logs(self, job_name):
+    def get_logs(self, job_name) -> str:
         """
         Get logs from a Kubernetes pod.
 
@@ -211,4 +211,8 @@ class KubernetesWrapper:
         logs = self.core.read_namespaced_pod_log(
             name=pod_name, namespace=self.namespace
         )
+
+        # Remove any newline characters from the logs
+        logs = logs.replace("\n", "")
+
         return logs
