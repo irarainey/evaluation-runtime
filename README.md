@@ -39,6 +39,20 @@ Copy the `.env.example` file to `.env` and fill in the necessary values for the 
 
 Run `poetry install` to install the required dependencies.
 
-## Running the Engine
+## Running the Engine in Visual Studio Code
 
-Run the following command to start the FastAPI server by pressing `F5` in Visual Studio Code.
+Run the following command to start the FastAPI server by pressing `F5` in Visual Studio Code. This will run the using your personal identity.
+
+## Running the Engine in Docker
+
+Run the following command to build the Docker image:
+
+```bash
+docker buildx -t evaluation-runtime:latest .
+```
+
+Run the following command to start the Docker container:
+
+```bash
+docker run -it -p 8000:8000 -v /var/run/docker.sock:/var/run/docker.sock --env-file .env evaluation-runtime:latest
+```
