@@ -8,6 +8,8 @@ WORKDIR /usr/src/app
 COPY main.py .
 COPY extraction.txt .
 
+# Install the OpenAI Python package
+# TODO: automate the addition of other packages from notebook
 RUN pip install openai
 
 # Run the Python script when the container launches
