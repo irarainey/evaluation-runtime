@@ -106,7 +106,7 @@ async def evaluation(
     # Attempt to build and push the Docker image
     try:
         # Create a Docker client authenticated with the ACR
-        docker = DockerWrapper(fqdn_registry)
+        docker = DockerWrapper()
 
         # Build the Docker image
         docker.build(
@@ -115,7 +115,7 @@ async def evaluation(
         )
 
         # Push the Docker image to the Azure Container Registry
-        docker.push(repository=f"{fqdn_registry}/{IMAGE_NAME}", tag=IMAGE_TAG)
+        docker.push(repository=f"{fqdn_registry}/{IMAGE_NAME}", tag=IMAGE_TAG, registry=fqdn_registry)
     except Exception as e:
         logging.error(f"Error building or pushing Docker image: {e}")
         return Response(
