@@ -16,12 +16,12 @@ def azure_login():
     Authenticate with Azure using DefaultAzureCredential or ClientSecretCredential.
     """
     if is_running_in_docker():
-        logging.info("Using ClientSecretCredential for Azure login...")
-        credential = ClientSecretCredential(
-            tenant_id=os.getenv("AZURE_TENANT_ID"),
-            client_id=os.getenv("AZURE_CLIENT_ID"),
-            client_secret=os.getenv("AZURE_CLIENT_SECRET"),
-        )
+        logging.info("Using az login for SPN Azure login...")
+        tenant_id = os.getenv("AZURE_TENANT_ID")
+        client_id = os.getenv("AZURE_CLIENT_ID")
+        client_secret = os.getenv("AZURE_CLIENT_SECRET")
+        command = f"az login --service-principal -u {client_id} -p {client_secret} --tenant {tenant_id}"
+        subprocess.run(command, shell=True)
     else:
         # Clear any environment variables to ensure local account is used
         if "AZURE_CLIENT_ID" in os.environ:
@@ -32,9 +32,7 @@ def azure_login():
             del os.environ["AZURE_TENANT_ID"]
         logging.info("Using DefaultAzureCredential for Azure login...")
         credential = DefaultAzureCredential()
-
-    # Get the access token which we don't use but it is required to authenticate
-    _ = credential.get_token("https://management.azure.com/.default")
+        _ = credential.get_token("https://management.azure.com/.default")
 
 
 def authenticate_acr(registry_name):
