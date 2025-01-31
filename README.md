@@ -45,6 +45,8 @@ Run the following command to start the FastAPI server by pressing `F5` in Visual
 
 ## Running the Engine in Docker
 
+To run the engine in Docker, you will need to build the Docker image and run the container. You also need to supply environment variables in a `.env` file. These environment variables also need to include Azure credentials for a Service Principal with the necessary permissions to access the Azure services.
+
 Run the following command to build the Docker image:
 
 ```bash
