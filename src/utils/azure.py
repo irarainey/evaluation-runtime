@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import subprocess
-from azure.identity import DefaultAzureCredential, ClientSecretCredential
+from azure.identity import DefaultAzureCredential
 
 
 def is_running_in_docker():
