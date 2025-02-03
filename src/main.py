@@ -95,6 +95,7 @@ async def evaluation(
 
         # Copy the Dockerfile from the boilerplate folder to the execution directory
         copy_file("src/boilerplate/Dockerfile", SAVE_PATH)
+        copy_file("src/boilerplate/requirements.txt", SAVE_PATH)
     except Exception as e:
         logging.error(f"Error handling the uploaded file: {e}")
         return Response(
