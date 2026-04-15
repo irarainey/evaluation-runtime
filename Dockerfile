@@ -3,11 +3,13 @@ FROM python:3.13-slim
 
 # Install Azure CLI
 RUN apt-get update -y \
-    && apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release \
-    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
-    && echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" > /etc/apt/sources.list.d/azure-cli.list \
+    && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg \
+    && chmod a+r /etc/apt/keyrings/microsoft.gpg \
+    && echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ bookworm main" > /etc/apt/sources.list.d/azure-cli.list \
     && apt-get update -y \
-    && apt-get install -y azure-cli \
+    && apt-get install -y --no-install-recommends azure-cli \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

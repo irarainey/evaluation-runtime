@@ -85,7 +85,7 @@ async def evaluate_code(
 
         # Copy the Dockerfile from the boilerplate folder to the execution directory
         file.copy_file("src/boilerplate/Dockerfile", constants.SAVE_PATH)
-        file.copy_file("src/boilerplate/requirements.txt", constants.SAVE_PATH)
+        file.copy_file("src/boilerplate/pyproject.toml", constants.SAVE_PATH)
     except Exception as e:
         logging.error(f"Error handling the uploaded file: {e}")
         return fastapi.Response(

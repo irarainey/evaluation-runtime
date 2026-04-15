@@ -23,7 +23,7 @@ src/
 ├── constants.py         # Shared constants (paths, image names, secret names)
 ├── boilerplate/         # Template files for the sandboxed execution container
 │   ├── Dockerfile       # Base Dockerfile for execution containers
-│   └── requirements.txt # Python dependencies for execution containers
+│   └── pyproject.toml   # Python dependencies for execution containers
 └── utils/
     ├── azure.py         # Azure authentication (DefaultAzureCredential / SPN)
     ├── docker.py        # Docker build, push, and ACR login wrapper

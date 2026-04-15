@@ -1,5 +1,8 @@
-# Use the official Python 3.11 image from the Docker Hub
-FROM python:3.11-slim
+# Use the official Python 3.13 image from the Docker Hub
+FROM python:3.13-slim
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 # Set the working directory
 WORKDIR /usr/src/app
@@ -9,8 +12,8 @@ COPY main.py .
 COPY extraction.txt .
 
 # Install the required Python packages
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY pyproject.toml .
+RUN uv sync --frozen --no-dev
 
 # Run the Python script when the container launches
-CMD ["python", "main.py"]
+CMD ["uv", "run", "python", "main.py"]

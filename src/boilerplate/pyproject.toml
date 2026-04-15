@@ -1,0 +1,10 @@
+[project]
+name = "execution-sandbox"
+version = "0.2.0"
+requires-python = ">=3.13"
+dependencies = [
+    "openai",
+]
+
+[tool.uv]
+package = false
