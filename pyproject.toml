@@ -24,6 +24,7 @@ dev = [
     "flake8>=7.1.1",
     "pylint>=3.3.2",
     "ipykernel>=6.29.5",
+    "types-docker>=7.1.0.20260409",
 ]
 
 [tool.uv]
