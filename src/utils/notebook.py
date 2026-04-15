@@ -1,7 +1,8 @@
 import logging
+
+import nbconvert
 import nbformat
-from nbconvert import PythonExporter
-from utils.file import write_file
+from utils import file
 
 
 async def convert_notebook_to_script(notebook_path, script_path):
@@ -17,10 +18,10 @@ async def convert_notebook_to_script(notebook_path, script_path):
         notebook_content = nbformat.read(notebook_file, as_version=4)
 
     # Convert the notebook to a Python script
-    python_exporter = PythonExporter()
+    python_exporter = nbconvert.PythonExporter()
     python_script, _ = python_exporter.from_notebook_node(notebook_content)
 
     # Write the Python script to a file
-    await write_file(python_script, script_path, "w")
+    await file.write_file(python_script, script_path, "w")
 
     logging.info(f"Notebook '{notebook_path}' has been converted to '{script_path}'.")

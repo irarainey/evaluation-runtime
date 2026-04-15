@@ -2,24 +2,13 @@ import json
 import logging
 import os
 import uuid
+
+import constants
+import dotenv
+import fastapi
 import uvicorn
-from dotenv import load_dotenv
-from constants import (
-    AKS_SECRET_NAME,
-    EXECUTION_SCRIPT,
-    EXTRACTION_FILE,
-    IMAGE_NAME,
-    IMAGE_TAG,
-    MEDIA_TYPE,
-    SAVE_PATH,
-)
-from utils.azure import azure_login
-from utils.docker import DockerWrapper
-from utils.evaluation import evaluate
-from utils.file import copy_file, delete_all_files_in_path, write_file
-from utils.kubernetes import KubernetesWrapper
-from fastapi import FastAPI, Form, Response, File, UploadFile
-from utils.notebook import convert_notebook_to_script
+from utils import azure, evaluation, file, kubernetes, notebook
+from utils import docker as docker_mod
 
 # Configure logging
 logging.basicConfig(
@@ -27,7 +16,7 @@ logging.basicConfig(
 )
 
 # Load environment variables
-load_dotenv()
+dotenv.load_dotenv()
 
 # Get environment variables
 registry_name = os.getenv("ACR_NAME")
@@ -37,98 +26,99 @@ openai_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
 openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
 
 # Create the FastAPI app
-app = FastAPI()
+app = fastapi.FastAPI()
 
 
 # Define the endpoint to evaluate the code
 @app.post("/")
-async def evaluation(
-    ground_truth: str = Form(...),
-    evaluators: str = Form(...),
-    extraction: UploadFile = File(...),
-    script: UploadFile = File(...),
-) -> Response:
+async def evaluate_code(
+    ground_truth: str = fastapi.Form(...),
+    evaluators: str = fastapi.Form(...),
+    extraction: fastapi.UploadFile = fastapi.File(...),
+    script: fastapi.UploadFile = fastapi.File(...),
+) -> fastapi.Response:
 
     logging.info("Received a request to execute code")
 
     # Create the full registry and container image names
     fqdn_registry = f"{registry_name}.azurecr.io"
-    container_image = f"{fqdn_registry}/{IMAGE_NAME}:{IMAGE_TAG}"
+    container_image = f"{fqdn_registry}/{constants.IMAGE_NAME}:{constants.IMAGE_TAG}"
 
     # Perform Azure login
     try:
-        azure_login()
+        azure.azure_login()
     except Exception as e:
         logging.error(f"Error logging in to Azure: {e}")
-        return Response(
+        return fastapi.Response(
             content=json.dumps({"error": str(e)}),
-            media_type=MEDIA_TYPE,
+            media_type=constants.MEDIA_TYPE,
             status_code=500,
         )
 
     # Handle the uploaded files for execution
     try:
         # Check if the code directory exists
-        os.makedirs(SAVE_PATH, exist_ok=True)
+        os.makedirs(constants.SAVE_PATH, exist_ok=True)
 
         # Empty out the code directory
-        delete_all_files_in_path(SAVE_PATH)
+        file.delete_all_files_in_path(constants.SAVE_PATH)
 
         # Save the uploaded file
-        if script.filename.endswith(".ipynb"):
-            file_location = os.path.join(SAVE_PATH, script.filename)
-            await write_file(script, file_location)
+        filename = script.filename or "script.py"
+        if filename.endswith(".ipynb"):
+            file_location = os.path.join(constants.SAVE_PATH, filename)
+            await file.write_file(script, file_location)
             # Convert the Jupyter Notebook to a Python script
-            await convert_notebook_to_script(
-                file_location, f"{SAVE_PATH}/{EXECUTION_SCRIPT}"
+            await notebook.convert_notebook_to_script(
+                file_location, f"{constants.SAVE_PATH}/{constants.EXECUTION_SCRIPT}"
             )
         else:
-            file_location = os.path.join(SAVE_PATH, EXECUTION_SCRIPT)
-            await write_file(script, file_location)
+            file_location = os.path.join(constants.SAVE_PATH, constants.EXECUTION_SCRIPT)
+            await file.write_file(script, file_location)
 
         # Save the extraction file contents
-        file_location = os.path.join(SAVE_PATH, EXTRACTION_FILE)
+        file_location = os.path.join(constants.SAVE_PATH, constants.EXTRACTION_FILE)
         extraction_file = await extraction.read()
         extraction_json = extraction_file.decode("utf-8")
         extraction_content = json.loads(extraction_json)
-        await write_file(extraction_content.get("content"), file_location, "w")
+        await file.write_file(extraction_content.get("content"), file_location, "w")
 
         # Copy the Dockerfile from the boilerplate folder to the execution directory
-        copy_file("src/boilerplate/Dockerfile", SAVE_PATH)
-        copy_file("src/boilerplate/requirements.txt", SAVE_PATH)
+        file.copy_file("src/boilerplate/Dockerfile", constants.SAVE_PATH)
+        file.copy_file("src/boilerplate/requirements.txt", constants.SAVE_PATH)
     except Exception as e:
         logging.error(f"Error handling the uploaded file: {e}")
-        return Response(
+        return fastapi.Response(
             content=json.dumps({"error": str(e)}),
-            media_type=MEDIA_TYPE,
+            media_type=constants.MEDIA_TYPE,
             status_code=500,
         )
 
     # Attempt to build and push the Docker image
     try:
         # Create a Docker client authenticated with the ACR
-        docker = DockerWrapper()
+        docker = docker_mod.DockerWrapper()
 
         # Build the Docker image
         docker.build(
-            path=f"./{SAVE_PATH}",
+            path=f"./{constants.SAVE_PATH}",
             tag=container_image,
         )
 
         # Push the Docker image to the Azure Container Registry
-        docker.push(repository=f"{fqdn_registry}/{IMAGE_NAME}", tag=IMAGE_TAG, registry=fqdn_registry)
+        docker.push(repository=f"{fqdn_registry}/{constants.IMAGE_NAME}", tag=constants.IMAGE_TAG, registry=fqdn_registry)
     except Exception as e:
         logging.error(f"Error building or pushing Docker image: {e}")
-        return Response(
+        return fastapi.Response(
             content=json.dumps({"error": str(e)}),
-            media_type=MEDIA_TYPE,
+            media_type=constants.MEDIA_TYPE,
             status_code=500,
         )
 
     # Attempt to execute the job on the Azure Kubernetes Service
     try:
         # Create a Kubernetes client
-        aks = KubernetesWrapper(resource_group, aks_cluster)
+        aks = kubernetes.KubernetesWrapper(resource_group, aks_cluster)
 
         # Create job and pod names
         job_id = uuid.uuid4()
@@ -141,7 +131,7 @@ async def evaluation(
             "AZURE_OPENAI_API_KEY": openai_api_key,
         }
 
-        aks.create_secrets(AKS_SECRET_NAME, secret_data)
+        aks.create_secrets(constants.AKS_SECRET_NAME, secret_data)
         container = aks.create_container(container_image, job_name)
         pod_spec = aks.create_pod_template(pod_name, container)
         job = aks.create_job(job_name, pod_spec)
@@ -164,13 +154,13 @@ async def evaluation(
 
         # Perform the evaluation
         evaluator_list = evaluators.split(",")
-        eval_results = evaluate(evaluator_list, data)
+        eval_results = evaluation.evaluate(evaluator_list, data)
 
     except Exception as e:
         logging.error(f"Error executing job: {e}")
-        return Response(
+        return fastapi.Response(
             content=json.dumps({"error": str(e)}),
-            media_type=MEDIA_TYPE,
+            media_type=constants.MEDIA_TYPE,
             status_code=500,
         )
 
@@ -183,9 +173,9 @@ async def evaluation(
     }
 
     # Return the response
-    return Response(
+    return fastapi.Response(
         content=json.dumps(response_content),
-        media_type=MEDIA_TYPE,
+        media_type=constants.MEDIA_TYPE,
         status_code=200,
     )
 

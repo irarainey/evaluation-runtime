@@ -14,7 +14,6 @@ dependencies = [
     "kubernetes>=32.0.0",
     "nbconvert>=7.16.6",
     "azure-ai-evaluation>=1.1.0",
-    "marshmallow>=3.26.1",
 ]
 
 [dependency-groups]
@@ -33,3 +32,7 @@ package = false
 [tool.mypy]
 mypy_path = "src"
 explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = "kubernetes.*"
+ignore_missing_imports = true

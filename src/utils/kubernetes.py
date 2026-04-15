@@ -1,9 +1,10 @@
 import logging
 import subprocess
 import time
-from kubernetes import config, client
 
-from constants import AKS_SECRET_NAME
+import constants
+from kubernetes import client, config
+from kubernetes.client import rest
 
 
 class KubernetesWrapper:
@@ -80,7 +81,7 @@ class KubernetesWrapper:
             core_v1_api.replace_namespaced_secret(
                 name=secret_name, namespace=self.namespace, body=secret
             )
-        except Exception as e:
+        except rest.ApiException as e:
             if e.status == 404:
                 # Secret does not exist; create it
                 print(f"Secret '{secret_name}' does not exist. Creating it.")
@@ -110,7 +111,7 @@ class KubernetesWrapper:
                     name="AZURE_OPENAI_ENDPOINT",
                     value_from=client.V1EnvVarSource(
                         secret_key_ref=client.V1SecretKeySelector(
-                            name=AKS_SECRET_NAME,
+                            name=constants.AKS_SECRET_NAME,
                             key="AZURE_OPENAI_ENDPOINT",
                         )
                     ),
@@ -119,7 +120,7 @@ class KubernetesWrapper:
                     name="AZURE_OPENAI_API_KEY",
                     value_from=client.V1EnvVarSource(
                         secret_key_ref=client.V1SecretKeySelector(
-                            name=AKS_SECRET_NAME,
+                            name=constants.AKS_SECRET_NAME,
                             key="AZURE_OPENAI_API_KEY",
                         )
                     ),

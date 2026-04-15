@@ -1,6 +1,7 @@
 import logging
+
 import docker
-from utils.azure import authenticate_acr
+from utils import azure
 
 
 class DockerWrapper:
@@ -17,7 +18,7 @@ class DockerWrapper:
         Parameters:
         - registry (str): The fully qualified domain name (FQDN) of the Azure Container Registry (ACR).
         """
-        access_token = authenticate_acr(registry)
+        access_token = azure.authenticate_acr(registry)
         logging.info(f"Logging docker in to {registry}")
         self.client.login(
             username="00000000-0000-0000-0000-000000000000",

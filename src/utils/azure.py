@@ -1,8 +1,9 @@
-import os
 import json
 import logging
+import os
 import subprocess
-from azure.identity import DefaultAzureCredential
+
+from azure import identity
 
 
 def is_running_in_docker():
@@ -31,7 +32,7 @@ def azure_login():
         if "AZURE_TENANT_ID" in os.environ:
             del os.environ["AZURE_TENANT_ID"]
         logging.info("Using DefaultAzureCredential for Azure login...")
-        credential = DefaultAzureCredential()
+        credential = identity.DefaultAzureCredential()
         _ = credential.get_token("https://management.azure.com/.default")
 
 

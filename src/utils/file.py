@@ -1,8 +1,9 @@
+import glob
 import logging
 import os
-import glob
 import shutil
-from fastapi import UploadFile
+
+import fastapi
 
 
 def delete_all_files_in_path(path) -> None:
@@ -36,7 +37,7 @@ def copy_file(source_path, destination_path) -> None:
         logging.error(f"Error copying file: {e}")
 
 
-async def write_file(file: UploadFile | str, file_location, mode="wb") -> None:
+async def write_file(file: fastapi.UploadFile | str, file_location, mode="wb") -> None:
     """
     Write the contents of an uploaded file to a specified location.
 

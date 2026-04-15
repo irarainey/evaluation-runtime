@@ -1,12 +1,6 @@
 import logging
-from azure.ai.evaluation import (
-    F1ScoreEvaluator,
-    BleuScoreEvaluator,
-    RougeScoreEvaluator,
-    RougeType,
-    GleuScoreEvaluator,
-    MeteorScoreEvaluator,
-)
+
+from azure.ai import evaluation
 
 
 def calculate_f1(data):
@@ -20,7 +14,7 @@ def calculate_f1(data):
     - dict: The evaluation results.
     """
     logging.info("Evaluating using F1 Score")
-    evaluator = F1ScoreEvaluator()
+    evaluator = evaluation.F1ScoreEvaluator()
     result = evaluator(**data)
     return result
 
@@ -36,7 +30,7 @@ def calculate_bleu(data):
     - dict: The evaluation results.
     """
     logging.info("Evaluating using BLEU Score")
-    evaluator = BleuScoreEvaluator()
+    evaluator = evaluation.BleuScoreEvaluator()
     result = evaluator(**data)
     return result
 
@@ -52,7 +46,7 @@ def calculate_rouge(data):
     - dict: The evaluation results.
     """
     logging.info("Evaluating using ROUGE Score")
-    rouge_score_evaluator = RougeScoreEvaluator(RougeType.ROUGE_1)
+    rouge_score_evaluator = evaluation.RougeScoreEvaluator(evaluation.RougeType.ROUGE_1)
     result = rouge_score_evaluator(**data)
     return result
 
@@ -68,7 +62,7 @@ def calculate_gleu(data):
     - dict: The evaluation results.
     """
     logging.info("Evaluating using GLEU Score")
-    rouge_score_evaluator = GleuScoreEvaluator()
+    rouge_score_evaluator = evaluation.GleuScoreEvaluator()
     result = rouge_score_evaluator(**data)
     return result
 
@@ -84,7 +78,7 @@ def calculate_meteor(data):
     - dict: The evaluation results.
     """
     logging.info("Evaluating using METEOR Score")
-    rouge_score_evaluator = MeteorScoreEvaluator()
+    rouge_score_evaluator = evaluation.MeteorScoreEvaluator()
     result = rouge_score_evaluator(**data)
     return result
 
