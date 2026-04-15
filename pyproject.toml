@@ -1,6 +1,6 @@
 [project]
 name = "evaluation-runtime"
-version = "0.1.0"
+version = "0.2.0"
 description = "An API that provides a runtime to run Python scripts and Jupyter notebooks making calls to Azure OpenAI endpoints and perform evaluation of the output."
 readme = "README.md"
 requires-python = ">=3.11"
