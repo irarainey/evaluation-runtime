@@ -28,3 +28,7 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.mypy]
+mypy_path = "src"
+explicit_package_bases = true
