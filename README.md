@@ -37,7 +37,7 @@ Or you could run the request using a tool such as Bruno or Postman:
 
 Copy the `.env.example` file to `.env` and fill in the necessary values for the required Azure services.
 
-Run `poetry install` to install the required dependencies.
+Run `uv sync` to install the required dependencies.
 
 ## Running the Engine in Visual Studio Code
 

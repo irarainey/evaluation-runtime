@@ -19,20 +19,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends docker.io \
 # Set the working directory inside the container
 WORKDIR /app
 
-# Install Poetry
-RUN pip install --no-cache-dir poetry \
-    && rm -rf /root/.cache/pipdocker
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 # Copy the entire application to the working directory
 COPY . .
 
-# Install dependencies via Poetry
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-root --no-interaction --no-ansi \
-    && rm -rf /root/.cache/pypoetry
+# Install dependencies via uv
+RUN uv sync --frozen --no-dev
 
 # Expose the port that your application will run on
 EXPOSE 8000
 
 # Specify the command to run your application using uvicorn
-CMD ["python", "src/main.py"]
+CMD ["uv", "run", "python", "src/main.py"]

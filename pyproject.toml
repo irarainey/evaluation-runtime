@@ -1,32 +1,30 @@
-[tool.poetry]
-name = "Evaluation Runtime"
+[project]
+name = "evaluation-runtime"
 version = "0.1.0"
 description = "An API that provides a runtime to run Python scripts and Jupyter notebooks making calls to Azure OpenAI endpoints and perform evaluation of the output."
-authors = ["Ira Rainey"]
 readme = "README.md"
-package-mode = false
+requires-python = ">=3.11"
+dependencies = [
+    "python-dotenv>=1.0.1",
+    "docker>=7.1.0",
+    "fastapi>=0.115.7",
+    "uvicorn>=0.34.0",
+    "python-multipart>=0.0.22",
+    "azure-identity>=1.19.0",
+    "kubernetes>=32.0.0",
+    "nbconvert>=7.16.6",
+    "azure-ai-evaluation>=1.1.0",
+    "marshmallow>=3.26.1",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-python-dotenv = "^1.0.1"
-docker = "^7.1.0"
-fastapi = "^0.115.7"
-uvicorn = "^0.34.0"
-python-multipart = "^0.0.20"
-azure-identity = "^1.19.0"
-kubernetes = "^32.0.0"
-nbconvert = "^7.16.6"
-azure-ai-evaluation = "^1.1.0"
-marshmallow = "3.23.2"
+[dependency-groups]
+dev = [
+    "isort>=5.13.2",
+    "mypy>=1.13.0",
+    "flake8>=7.1.1",
+    "pylint>=3.3.2",
+    "ipykernel>=6.29.5",
+]
 
-[tool.poetry.group.dev.dependencies]
-black = "^24.10.0"
-isort = "^5.13.2"
-mypy = "^1.13.0"
-flake8 = "^7.1.1"
-pylint = "^3.3.2"
-ipykernel = "^6.29.5"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.uv]
+package = false
