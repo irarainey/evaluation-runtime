@@ -1,17 +1,59 @@
 # Evaluation Runtime
 
-This repository contains a simple Python execution and evaluation engine that can run Python scripts or Jupyter notebooks which make calls to Azure OpenAI and perform evaluation of the output. It does this by dynamically building a Docker image with the necessary dependencies and running the container on an Azure Kubernetes Service instance.
+A Python execution and evaluation engine that runs Python scripts or Jupyter notebooks against Azure OpenAI endpoints and evaluates the output. It works by dynamically building a sandboxed Docker image, executing it as a Kubernetes job on Azure Kubernetes Service (AKS), and scoring the model response against a supplied ground truth.
 
-The project uses FastAPI and takes in a single POST request with a file containing the file to be executed. The engine will then execute the file, return the output, and perform the evaluation. A sample notebook and extraction file are included in the `resources/samples` directory.
+## How It Works
 
-The inputs for each request are as follows:
+The service exposes a single FastAPI `POST /` endpoint. When a request is received:
 
-- `script`: The file to be executed (either a Python script or Jupyter notebook) that contains the prompt and the code to be executed.
-- `extraction`: The JSON file containing the extracted content to be used as context for the inference.
-- `ground_truth`: The ground truth value to be used for evaluation.
-- `evaluators`: The list of evaluators to be used for evaluation. The available evaluators are `f1`, `bleu`, `gleu`, `meteor`, and `rouge`.
+1. The uploaded script (`.py` or `.ipynb`) is prepared — notebooks are converted to Python scripts via `nbconvert`.
+2. The extraction JSON's `content` field is written to a plain text file (`extraction.txt`) for the script to read at runtime.
+3. A sandboxed Docker image is built using a boilerplate Dockerfile (in `src/boilerplate/`) that packages the script, extraction file, and an `openai` dependency.
+4. The image is pushed to Azure Container Registry (ACR).
+5. A Kubernetes job is created on AKS with the Azure OpenAI endpoint and API key injected as secrets.
+6. The job runs, and pod logs (the model output) are collected.
+7. The output is evaluated against the provided ground truth using the requested evaluators.
+8. The response, ground truth, and evaluation scores are returned.
 
-You can run the API by using the following `curl` command:
+## Project Structure
+
+```
+src/
+├── main.py              # FastAPI application and POST / endpoint
+├── constants.py         # Shared constants (paths, image names, secret names)
+├── boilerplate/         # Template files for the sandboxed execution container
+│   ├── Dockerfile       # Base Dockerfile for execution containers
+│   └── requirements.txt # Python dependencies for execution containers
+└── utils/
+    ├── azure.py         # Azure authentication (DefaultAzureCredential / SPN)
+    ├── docker.py        # Docker build, push, and ACR login wrapper
+    ├── evaluation.py    # Evaluation functions (F1, BLEU, ROUGE, GLEU, METEOR)
+    ├── file.py          # File helpers (copy, write, delete)
+    ├── kubernetes.py    # AKS job orchestration (secrets, pods, logs)
+    └── notebook.py      # Jupyter notebook to Python script conversion
+resources/
+├── images/              # Documentation images
+└── samples/
+    ├── prompt.ipynb     # Sample notebook that queries Azure OpenAI
+    └── extraction.json  # Sample extraction file with content for context
+```
+
+## API
+
+### `POST /`
+
+Accepts a multipart form request with the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `script` | File | Python script (`.py`) or Jupyter notebook (`.ipynb`) to execute |
+| `extraction` | File | JSON file with a `content` field containing context text for inference |
+| `ground_truth` | String | The expected correct answer for evaluation |
+| `evaluators` | String | Comma-separated list of evaluators to run |
+
+**Available evaluators:** `f1`, `bleu`, `gleu`, `meteor`, `rouge`
+
+### Example Request
 
 ```bash
 curl --request POST \
@@ -22,38 +64,62 @@ curl --request POST \
   --form 'ground_truth=£82m' \
   --form 'evaluators=f1,bleu,gleu,meteor,rouge'
 ```
-Or you could run the request using a tool such as Bruno or Postman:
+
+You can also use a tool such as Bruno or Postman:
 
 ![Example](./resources/images/example.png)
 
 ## Prerequisites
 
-- Azure CLI (installed locally)
-- Docker (installed locally)
-- Azure Kubernetes Service (AKS)
+- [Python](https://www.python.org/) 3.11+
+- [uv](https://docs.astral.sh/uv/) for dependency management
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/)
+- [Docker](https://www.docker.com/) (installed locally)
+- Azure Kubernetes Service (AKS) cluster
 - Azure Container Registry (ACR)
+- Azure OpenAI resource with a deployed model
 
 ## Setup
 
-Copy the `.env.example` file to `.env` and fill in the necessary values for the required Azure services.
+1. Copy the `.env.sample` file to `.env` and fill in the required values:
 
-Run `uv sync` to install the required dependencies.
+   ```bash
+   cp .env.sample .env
+   ```
 
-## Running the Engine in Visual Studio Code
+   See `.env.sample` for descriptions of each variable. The Service Principal credentials (`AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`) are only required when running inside Docker — local development uses `DefaultAzureCredential` instead.
 
-Run the following command to start the FastAPI server by pressing `F5` in Visual Studio Code. This will run the using your personal identity.
+2. Install dependencies:
 
-## Running the Engine in Docker
+   ```bash
+   uv sync
+   ```
 
-To run the engine in Docker, you will need to build the Docker image and run the container. You also need to supply environment variables in a `.env` file. These environment variables also need to include Azure credentials for a Service Principal with the necessary permissions to access the Azure services.
+## Running Locally
 
-Run the following command to build the Docker image:
+### Visual Studio Code
+
+Press `F5` to start the FastAPI server using the included debug configuration. This authenticates using your personal Azure identity via `DefaultAzureCredential`.
+
+### Command Line
 
 ```bash
-docker buildx -t evaluation-runtime:latest .
+uv run python src/main.py
 ```
 
-Run the following command to start the Docker container:
+The server starts on `http://localhost:8000`.
+
+## Running in Docker
+
+When running in Docker, you must provide Service Principal credentials in the `.env` file for Azure authentication.
+
+Build the Docker image:
+
+```bash
+docker build -t evaluation-runtime:latest .
+```
+
+Start the container (the Docker socket mount is required for building execution images):
 
 ```bash
 docker run -it -p 8000:8000 -v /var/run/docker.sock:/var/run/docker.sock --env-file .env evaluation-runtime:latest
